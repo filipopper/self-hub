@@ -1,0 +1,579 @@
+@keyframes openMenu {
+  0% {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: 200px;
+    opacity: 1;
+  }
+}
+
+@keyframes closeMenu {
+  0% {
+    height: 200px;
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
+  }
+}
+
+body,
+html {
+  height: 100%;
+}
+
+body,
+main {
+  display: flex;
+  flex-direction: column;
+}
+
+body,
+body.loaded {
+  transform: scale(1);
+}
+
+body {
+  opacity: 0;
+  transition: opacity 1s, transform 1s;
+}
+
+body.loaded {
+  opacity: 1;
+}
+
+main {
+  flex: 1;
+  padding: 1rem;
+}
+
+#content {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.news-header,
+.news-item {
+  display: flex;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.news-item {
+  flex-direction: column;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+}
+
+.news-header {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.news-header .thumbnail {
+  max-width: 200px;
+  height: auto;
+  border-radius: 8px;
+  object-fit: cover;
+  margin-right: 20px;
+}
+
+.news-meta {
+  flex-grow: 1;
+}
+
+.news-meta h4 {
+  margin: 0;
+  font-size: 1.6rem;
+  color: #333;
+}
+
+.news-meta p {
+  margin: 5px 0;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+.news-body {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #333;
+  margin-top: 15px;
+}
+
+.read-more {
+  font-weight: 700;
+  text-decoration: none;
+  color: #007bff;
+  margin-top: 10px;
+}
+
+.read-more:hover {
+  text-decoration: underline;
+}
+
+.news-item img {
+  border-radius: 8px;
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 15px;
+}
+
+.announcement {
+  background-color: #d1f7d1;
+  color: #3c763d;
+  border: 2px solid #3c763d;
+  padding: 15px;
+  margin: 10px 0;
+  border-radius: 15px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  font-size: 16px;
+}
+
+.announcement h3 {
+  color: #3c763d;
+  margin-top: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.announcement p {
+  margin: 10px 0;
+  text-align: left;
+}
+
+.announcement h3::selection,
+.announcement p::selection,
+.announcement strong::selection {
+  background-color: var(--secondary-brand);
+  color: var(--accent);
+}
+
+.announcement strong {
+  font-weight: 700;
+  color: var(--secondary-brand);
+}
+
+.responsive-menu .menu-toggle {
+  display: none;
+  cursor: pointer;
+  z-index: 110;
+}
+
+#nav-links,
+#nav-links .show {
+  padding: 0 0 10px;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 100;
+}
+
+#nav-links .show {
+  position: absolute;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  height: 0;
+  opacity: 0;
+  animation: 0.5s forwards closeMenu;
+}
+
+#nav-links {
+  background-color: var(--primary-brand);
+}
+
+#nav-links.show {
+  animation: 0.5s forwards openMenu;
+  display: block;
+}
+
+@media screen and (max-width: 320px) {
+  body {
+    font-size: 14px;
+  }
+  main {
+    padding: 0.5rem;
+  }
+  .news-grid {
+    grid-template-columns: 1fr;
+  }
+  .news-meta h4 {
+    font-size: 1.2rem;
+  }
+  .announcement {
+    font-size: 14px;
+    padding: 10px;
+  }
+  .news-item {
+    padding: 10px;
+  }
+  .news-header {
+    flex-direction: column;
+  }
+  .news-header .thumbnail {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .responsive-menu .menu-toggle,
+  .responsive-menu ul.show {
+    display: block;
+  }
+  .responsive-menu ul {
+    display: none;
+    position: absolute;
+    top: 60px;
+    left: 0;
+    width: 100%;
+    z-index: 100;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 10px 0;
+  }
+  .responsive-menu li {
+    margin: 15px 0;
+    text-align: center;
+  }
+  .responsive-menu a {
+    font-size: 16px;
+  }
+  .news-grid {
+    grid-template-columns: 1fr;
+  }
+  .news-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .news-header .thumbnail {
+    max-width: 100%;
+  }
+  .news-meta {
+    padding-left: 0;
+  }
+}
+
+@media screen and (min-width: 768px) {
+  body {
+    font-size: 16px;
+  }
+  main {
+    padding: 2rem;
+  }
+  .news-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .news-meta h4 {
+    font-size: 1.5rem;
+  }
+  .announcement {
+    font-size: 16px;
+    padding: 15px;
+  }
+  .news-item {
+    padding: 20px;
+  }
+  .news-header {
+    flex-direction: row;
+  }
+  .news-header .thumbnail {
+    max-width: 200px;
+  }
+}
+
+@media screen and (min-width: 1150px) {
+  body {
+    font-size: 18px;
+  }
+  main {
+    padding: 3rem;
+  }
+  .news-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .news-meta h4 {
+    font-size: 1.8rem;
+  }
+  .announcement {
+    font-size: 18px;
+    padding: 20px;
+  }
+  .news-item {
+    padding: 25px;
+  }
+  .news-header .thumbnail {
+    max-width: 250px;
+  }
+}
+
+.news-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 30px;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.news-item {
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: #fff;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.news-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.news-item h4 {
+  margin: 20px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #333;
+  line-height: 1.3;
+}
+
+.news-item p {
+  margin: 0 20px 20px;
+  color: #555;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.news-item .news-meta {
+  margin: 0 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.news-item .date,
+.news-item h4,
+.news-item p {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+
+.news-item .date {
+  font-size: 0.875rem;
+  color: #888;
+}
+
+.news-item .tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.news-item .tag {
+  background: #f5f5f5;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  color: #666;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.news-item .tag:hover {
+  background: #e0e0e0;
+}
+
+.news-item .read-more {
+  display: block;
+  margin: 20px;
+  text-align: center;
+  color: #0056b3;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.news-item .read-more:hover {
+  text-decoration: underline;
+}
+
+.tags-filter {
+  margin-bottom: 30px;
+  padding: 12px 20px;
+  background: #fafafa;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.tags-filter .tag {
+  background: #e0e0e0;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.tags-filter .tag:hover {
+  background: #d0d0d0;
+  transform: scale(1.05);
+}
+
+.news-detail {
+  max-width: 80%;
+  margin: 40px auto;
+  padding: 30px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.news-detail .content {
+  line-height: 1.7;
+  color: #333;
+}
+
+.news-detail .content h1,
+.news-detail .content h2,
+.news-detail .content h3 {
+  margin-top: 2em;
+  margin-bottom: 1em;
+  text-align: center;
+  color: #2c2c2c;
+  font-weight: 700;
+  font-family: "Times New Roman", "Georgia", serif;
+  line-height: 1.4;
+}
+
+.news-detail .content p {
+  margin-bottom: 1.8em;
+  color: #333;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  font-family: "Times New Roman", "Georgia", serif;
+  text-align: justify;
+}
+
+.news-detail .news-meta {
+  margin-top: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.news-detail .news-meta .date {
+  font-size: 1rem;
+  color: #777;
+  font-family: "Times New Roman", serif;
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+.news-detail .news-meta .tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.news-detail .news-meta .tag {
+  background: #f4f4f4;
+  padding: 8px 15px;
+  border-radius: 25px;
+  font-size: 0.9rem;
+  color: #444;
+  font-family: "Times New Roman", serif;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+}
+
+.news-detail .news-meta .tag:hover {
+  background-color: #ddd;
+}
+
+.news-detail .news-meta::after {
+  content: "";
+  display: block;
+  margin-top: 30px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.news-detail .content a {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.news-detail .content a:hover {
+  text-decoration: underline;
+}
+
+.news-detail .content img {
+  width: 100%;
+  height: auto;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  border-radius: 5px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.tags-filter {
+  margin-bottom: 40px;
+  padding: 12px 20px;
+  background: #f8f8f8;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.tags-filter .tag {
+  background: #e6e6e6;
+  padding: 8px 15px;
+  border-radius: 25px;
+  font-size: 0.9rem;
+  color: #555;
+  font-family: "Times New Roman", serif;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.tags-filter .tag:hover {
+  background: #d0d0d0;
+  transform: scale(1.05);
+}
+
+.news-detail .content p,
+.news-detail .date {
+  font-size: 1rem;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+
+.news-detail .date {
+  color: #888;
+}
+
+.news-detail .tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.news-detail .tag {
+  background: #f0f0f0;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  color: #666;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}

@@ -1,0 +1,7 @@
+eliminar todos los console.log
+eliminar comentarios
+corregir css y definir bien el diseño de estilos a seguir en todo (patrón de diseño o como sea que se llame)
+corregir la vista de las noticias para que se vea más sobrio y profesional pero con personalidad
+corregir wikipedia para que se vea más como el resto de la página
+corregir los espacios largos debajo del header
+hacer responsive
