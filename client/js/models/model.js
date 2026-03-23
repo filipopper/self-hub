@@ -5,103 +5,79 @@ export class Model {
 
   async loadJsonFile(filePath) {
     try {
-      const response = await fetch(filePath);
-      if (!response.ok) {
-        throw new Error(`Error loading file: ${response.status}`);
-      }
-      return await response.json();
-    } catch (error) {
-      console.error("Error loading JSON file:", error);
+      const r = await fetch(filePath);
+      if (!r.ok) throw new Error(`${r.status}`);
+      return await r.json();
+    } catch (e) {
+      console.error("JSON load error:", filePath, e);
       return null;
     }
   }
 
   async loadTextFile(filePath) {
     try {
-      const response = await fetch(filePath);
-      if (!response.ok) {
-        throw new Error(`Error loading file: ${response.status}`);
-      }
-      return await response.text();
-    } catch (error) {
-      console.error("Error loading text file:", error);
+      const r = await fetch(filePath);
+      if (!r.ok) throw new Error(`${r.status}`);
+      return await r.text();
+    } catch (e) {
+      console.error("Text load error:", filePath, e);
       return "";
     }
   }
 
+  async _getIndex() {
+    const raw = await this.loadJsonFile(`${this.postsDir}/index.json`);
+    if (!raw) return { posts: [], urgencyBanner: null };
+    // Support both old format (array) and new format (object)
+    if (Array.isArray(raw)) return { posts: raw, urgencyBanner: null };
+    return {
+      posts: raw.posts || [],
+      urgencyBanner: raw.urgencyBanner || null,
+    };
+  }
+
   async getNews() {
+    const { posts } = await this._getIndex();
     const news = [];
-    const postsIndex = await this.loadJsonFile(`${this.postsDir}/index.json`);
 
-    if (!Array.isArray(postsIndex)) {
-      console.warn("index.json is not an array or is empty");
-      return [];
-    }
-
-    for (const post of postsIndex) {
+    for (const post of posts) {
       try {
-        const article = await this.loadJsonFile(
-          `${this.postsDir}/${post}/article.json`
-        );
-        const content = await this.loadTextFile(
-          `${this.postsDir}/${post}/content.md`
-        );
+        const article   = await this.loadJsonFile(`${this.postsDir}/${post}/article.json`);
+        const content   = await this.loadTextFile(`${this.postsDir}/${post}/content.md`);
         const thumbnail = `${this.postsDir}/${post}/thumbnail.jpg`;
-
-        if (!article || !article.title || !article.description) {
-          console.warn(`Skipping invalid post: ${post}`);
-          continue;
-        }
-
-        const newsItem = {
-          ...article,
-          content,
-          thumbnail,
-          id: post,
-          tags: article.tags || [], // Asegurar que los tags existan o sean un array vacío
-        };
-
-        news.push(newsItem);
-      } catch (error) {
-        console.error(`Error loading post ${post}:`, error);
+        if (!article?.title || !article?.description) continue;
+        news.push({ ...article, content, thumbnail, id: post, tags: article.tags || [] });
+      } catch (e) {
+        console.error(`Error loading post ${post}:`, e);
       }
     }
 
-    // Ordenar las noticias por fecha (de más reciente a más antigua)
-    const sortedNews = news.sort((a, b) => {
-      const dateA = new Date(a.date);
-      const dateB = new Date(b.date);
-      return dateB - dateA; // Orden descendente (más reciente primero)
-    });
-
-    return sortedNews;
+    return news.sort((a, b) => new Date(b.date) - new Date(a.date));
   }
 
   async getNewsById(id) {
     try {
-      const article = await this.loadJsonFile(
-        `${this.postsDir}/${id}/article.json`
-      );
-      const content = await this.loadTextFile(
-        `${this.postsDir}/${id}/content.md`
-      );
+      const article   = await this.loadJsonFile(`${this.postsDir}/${id}/article.json`);
+      const content   = await this.loadTextFile(`${this.postsDir}/${id}/content.md`);
       const thumbnail = `${this.postsDir}/${id}/thumbnail.jpg`;
-
-      if (!article || !article.title || !article.description) {
-        console.error(`Invalid post data for id: ${id}`);
-        return null;
-      }
-
-      return {
-        ...article,
-        content,
-        thumbnail,
-        id,
-        tags: article.tags || [], // Asegurar que los tags existan o sean un array vacío
-      };
-    } catch (error) {
-      console.error(`Error loading news item ${id}:`, error);
+      if (!article?.title) return null;
+      return { ...article, content, thumbnail, id, tags: article.tags || [] };
+    } catch (e) {
+      console.error(`Error loading post ${id}:`, e);
       return null;
     }
+  }
+
+  async getUrgencyBanner() {
+    const { urgencyBanner } = await this._getIndex();
+    if (!urgencyBanner?.active) return null;
+    // Check expiry
+    if (urgencyBanner.expiresAt) {
+      // Parse as end of day in local time to avoid UTC midnight issues
+      const [y, m, d] = urgencyBanner.expiresAt.split("-").map(Number);
+      const expires = new Date(y, m - 1, d, 23, 59, 59);
+      if (expires < new Date()) return null;
+    }
+    return urgencyBanner;
   }
 }

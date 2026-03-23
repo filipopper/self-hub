@@ -1,881 +1,715 @@
 export class StoreView {
   constructor() {
     this.content = document.getElementById("content");
-    if (!this.content) {
-      console.error("Element with id 'content' not found.");
+    try {
+      const raw = JSON.parse(localStorage.getItem("fili_cart") || "[]");
+      this.cart = Array.isArray(raw)
+        ? raw
+            .filter(
+              (i) =>
+                i && typeof i.id !== "undefined" && typeof i.price === "number",
+            )
+            .map((i) => ({
+              ...i,
+              variations: Array.isArray(i.variations) ? i.variations : [],
+              quantity: i.quantity || 1,
+            }))
+        : [];
+    } catch (_) {
+      this.cart = [];
     }
-    this.cart = [];
-    this.cartVisible = false;
-    this.products = [];
 
-    // Bind de métodos para mantener el contexto
-    this.toggleCart = this.toggleCart.bind(this);
-    this.addToCart = this.addToCart.bind(this);
-    this.buyNow = this.buyNow.bind(this);
-    this.toggleProductDetails = this.toggleProductDetails.bind(this);
-    this.validateProductForm = this.validateProductForm.bind(this);
-    this.getSelectedVariations = this.getSelectedVariations.bind(this);
-    this.updateCartUI = this.updateCartUI.bind(this);
-    this.showCheckoutModal = this.showCheckoutModal.bind(this);
-    this.processCheckout = this.processCheckout.bind(this);
-    this.showToast = this.showToast.bind(this);
-    this.calculateSubtotal = this.calculateSubtotal.bind(this);
-    this.updateCheckoutSummary = this.updateCheckoutSummary.bind(this);
-    this.closeCheckoutModal = this.closeCheckoutModal.bind(this);
-    this.handleKeyDown = this.handleKeyDown.bind(this);
-  }
-
-  render() {
     this.products = [
       {
         id: 1,
         name: "Taza cerámica",
-        baseImage: "../client/assets/img/taza-base.webp",
-        description: "Taza de cerámica de alta calidad",
+        price: 800,
+        currency: "$",
+        badge: "Más vendido",
+        description:
+          "Cerámica de alta calidad con diseño exclusivo del movimiento.",
+        baseImage: "client/assets/img/product-placeholder.svg",
         variations: [
           {
-            name: "diseño",
+            name: "Diseño",
+            required: true,
             options: [
               {
                 name: "Nicolás Filipovich",
-                image: "../client/assets/img/taza-nicolas.webp",
+                image: "client/assets/img/product-placeholder.svg",
               },
               {
                 name: "Con logo",
-                image: "../client/assets/img/taza-logo.webp",
+                image: "client/assets/img/product-placeholder.svg",
               },
               {
                 name: "Blanca",
-                image: "../client/assets/img/taza-blanca.webp",
+                image: "client/assets/img/product-placeholder.svg",
               },
             ],
-            required: true,
           },
           {
-            name: "tamaño",
-            options: [
-              { name: "Standard", image: null },
-              {
-                name: "Grande",
-                image: "../client/assets/img/taza-grande.webp",
-              },
-            ],
+            name: "Tamaño",
             required: true,
+            options: [
+              { name: "Standard 300ml", image: null },
+              { name: "Grande 450ml", image: null },
+            ],
           },
         ],
-        price: 800.0,
       },
       {
         id: 2,
         name: "Gorra",
-        baseImage: "../client/assets/img/gorra-base.webp",
-        price: 500.0,
-        description: "Gorra con logo bordado en la parte frontal",
+        price: 500,
+        currency: "$",
+        badge: null,
+        description: "Logo bordado de alta calidad. Talle único ajustable.",
+        baseImage: "client/assets/img/gorra-base.webp",
         variations: [
           {
-            name: "color",
-            options: [
-              { name: "Negro", image: "../client/assets/img/gorra-negra.webp" },
-              {
-                name: "Blanco",
-                image: "../client/assets/img/gorra-blanca.webp",
-              },
-            ],
+            name: "Color",
             required: true,
+            options: [
+              { name: "Negro", image: "client/assets/img/gorra-negra.webp" },
+              { name: "Blanco", image: "client/assets/img/gorra-blanca.webp" },
+            ],
           },
         ],
       },
       {
         id: 3,
-        name: "Stickers - 50 unidades",
-        baseImage: "../client/assets/img/stickers.webp",
-        price: 60.0,
-        description: "50 unidades de stickers de alta calidad surtidos",
+        name: "Stickers · 50 u.",
+        price: 60,
+        currency: "$",
+        badge: "Mejor precio",
+        description: "50 stickers surtidos, resistentes al agua.",
+        baseImage: "client/assets/img/stickers.webp",
         variations: [],
       },
     ];
 
-    let productHTML = `
-      <div class="cart-container">
-        <button id="toggle-cart" class="cart-toggle">
-          <span id="cart-count">0</span> 🛒
-        </button>
-        <div id="cart-dropdown" class="cart-dropdown">
-          <div class="cart-dropdown-header">
-            <span>Tu Carrito</span>
-            <span id="cart-items-count">0 items</span>
-          </div>
-          <div id="cart-items" class="cart-items"></div>
-          <div class="cart-footer">
-            <div class="cart-total">
-              <span>Total:</span>
-              <span id="cart-total-amount">$0.00</span>
-            </div>
-            <button id="checkout-button" class="checkout-button">Finalizar Compra</button>
-          </div>
-        </div>
+    // Track selected variations and qty per product
+    this.selections = {};
+    this.quantities = {};
+    this.products.forEach((p) => {
+      this.selections[p.id] = {};
+      this.quantities[p.id] = 1;
+    });
+    this.activeProduct = this.products[0];
+  }
+
+  // ── Persistence ────────────────────────────────────────────
+  _save() {
+    try {
+      localStorage.setItem("fili_cart", JSON.stringify(this.cart));
+    } catch (_) {}
+  }
+  _fmt(n) {
+    return `$${n.toLocaleString("es-UY", { minimumFractionDigits: 0 })}`;
+  }
+  _subtotal() {
+    return this.cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  }
+  _count() {
+    return this.cart.reduce((s, i) => s + i.quantity, 0);
+  }
+
+  // ── Main render ────────────────────────────────────────────
+  render() {
+    this.content.innerHTML = `
+<div class="sv-root">
+
+  <!-- LEFT: product list -->
+  <div class="sv-left">
+    <div class="sv-left-head">
+      <div class="sv-left-title">
+        <span class="sv-overline">Tienda oficial</span>
+        <h2>Apoyá el movimiento</h2>
+        <p>El 100% de las ganancias va a la causa.</p>
       </div>
-    <div class="announcement">
-    <h3>Compra con propósito y apoya la causa</h3>
-    <p>Explora nuestra tienda y adquiere productos diseñados para apoyar nuestra misión y valores. Cada compra no solo te conecta con la comunidad, sino que también contribuye a fortalecer nuestra campaña y a financiar obras de beneficencia. <strong>El 100% de las ganancias se destina a proyectos sociales y actividades de apoyo a las comunidades más necesitadas.</strong></p>
-    <p>Al elegir nuestros productos, estás ayudando a generar un cambio real y significativo. Desde ropa hasta artículos de uso cotidiano, todos nuestros productos son una forma de mostrar tu apoyo y compromiso con la causa.</p>
+      <div class="sv-badges">
+        <span class="sv-badge sv-badge-green"><i class="ri-heart-line"></i>Causa social</span>
+        <span class="sv-badge"><i class="ri-map-pin-line"></i>Envío nacional</span>
+      </div>
     </div>
-      <div class="product-container">
-    `;
 
-    this.products.forEach((product) => {
-      let variationsHTML = "";
-      if (product.variations && product.variations.length > 0) {
-        product.variations.forEach((variation, index) => {
-          variationsHTML += `
-            <div class="variation-group">
-              <label for="variation-${product.id}-${index}">${
-            variation.name.charAt(0).toUpperCase() + variation.name.slice(1)
-          }:</label>
-              <select id="variation-${
-                product.id
-              }-${index}" class="input variation-select" 
-                data-product-id="${product.id}" 
-                ${variation.required ? "required" : ""}>
-                <option value="" disabled selected>Seleccione una opción</option>
-                ${variation.options
-                  .map(
-                    (option, optIndex) =>
-                      `<option value="${optIndex}" 
-                    data-image="${option.image || ""}">${option.name}</option>`
-                  )
-                  .join("")}
-              </select>
-              ${
-                variation.required
-                  ? '<span class="validation-error hidden">Este campo es requerido</span>'
-                  : ""
-              }
-            </div>
-          `;
-        });
-      }
+    <div class="sv-product-list" id="sv-list">
+      ${this.products.map((p) => this._productRow(p)).join("")}
+    </div>
 
-      productHTML += `
-        <div class="product-card">
-          <img src="${product.baseImage}" alt="${product.name}" 
-            class="product-image" 
-            id="product-image-${product.id}" />
-          <div class="product-info">
-            <h4>${product.name}</h4>
-            <p class="description">${product.description}</p>
-            <p class="price" id="price-${product.id}">$${product.price.toFixed(
-        2
-      )}</p>
+    <div class="sv-how">
+      <i class="ri-information-2-line"></i>
+      <span>Elegís productos → los agregás → te contactamos por WhatsApp para coordinar pago y envío.</span>
+    </div>
+  </div>
 
-            <button class="interest-button" id="interest-button-${
-              product.id
-            }">Me interesa</button>
+  <!-- RIGHT: configurator + cart -->
+  <div class="sv-right">
 
-            <div class="product-details" id="product-details-${product.id}">
-              ${variationsHTML}
-              
-              <div class="quantity-control">
-                <label for="quantity-${product.id}">Cantidad:</label>
-                <input type="number" id="quantity-${
-                  product.id
-                }" value="1" min="1" max="10" class="input" />
-              </div>
-
-              <button class="add-to-cart-button" id="add-to-cart-${
-                product.id
-              }" data-id="${product.id}">
-                Agregar al carrito
-              </button>
-
-              <button class="buy-now-button" id="buy-now-${
-                product.id
-              }" data-id="${product.id}">
-                Comprar ahora
-              </button>
-            </div>
-          </div>
-        </div>
-      `;
-    });
-
-    productHTML += "</div>";
-    this.content.innerHTML = productHTML;
-    this.setupEventListeners();
-  }
-
-  setupEventListeners() {
-    // Configurar eventos para variaciones que cambian imágenes
-    this.products.forEach((product) => {
-      if (product.variations && product.variations.length > 0) {
-        product.variations.forEach((variation, index) => {
-          const select = document.getElementById(
-            `variation-${product.id}-${index}`
-          );
-          if (select) {
-            select.addEventListener("change", () => {
-              const selectedOption = select.options[select.selectedIndex];
-              const imageUrl = selectedOption.getAttribute("data-image");
-              if (imageUrl) {
-                document.getElementById(`product-image-${product.id}`).src =
-                  imageUrl;
-              }
-              this.validateProductForm(product.id);
-            });
-          }
-        });
-      }
-
-      const interestButton = document.getElementById(
-        `interest-button-${product.id}`
-      );
-      const addToCartButton = document.getElementById(
-        `add-to-cart-${product.id}`
-      );
-      const buyNowButton = document.getElementById(`buy-now-${product.id}`);
-
-      if (interestButton) {
-        interestButton.addEventListener("click", () =>
-          this.toggleProductDetails(product.id)
-        );
-      }
-      if (addToCartButton) {
-        addToCartButton.addEventListener("click", () =>
-          this.addToCart(product.id)
-        );
-      }
-      if (buyNowButton) {
-        buyNowButton.addEventListener("click", () => this.buyNow(product.id));
-      }
-    });
-
-    // Configurar eventos del carrito
-    const toggleCartBtn = document.getElementById("toggle-cart");
-    const checkoutBtn = document.getElementById("checkout-button");
-
-    if (toggleCartBtn) {
-      toggleCartBtn.addEventListener("click", this.toggleCart);
-    }
-    if (checkoutBtn) {
-      checkoutBtn.addEventListener("click", this.showCheckoutModal);
-    }
-  }
-
-  toggleCart() {
-    const cartDropdown = document.getElementById("cart-dropdown");
-    const cartToggle = document.getElementById("toggle-cart");
-
-    if (!cartDropdown || !cartToggle) return;
-
-    this.cartVisible = !this.cartVisible;
-
-    if (this.cartVisible) {
-      cartDropdown.classList.add("visible");
-      cartToggle.classList.add("active");
-    } else {
-      cartDropdown.classList.remove("visible");
-      cartToggle.classList.remove("active");
-    }
-  }
-
-  validateProductForm(productId) {
-    const product = this.products.find((p) => p.id === parseInt(productId));
-    if (!product) return false;
-
-    let isValid = true;
-
-    if (product.variations && product.variations.length > 0) {
-      product.variations.forEach((variation, index) => {
-        const select = document.getElementById(
-          `variation-${productId}-${index}`
-        );
-        if (!select) return;
-
-        const errorElement =
-          select.parentElement.querySelector(".validation-error");
-
-        if (variation.required && (!select.value || select.value === "")) {
-          if (errorElement) errorElement.classList.remove("hidden");
-          isValid = false;
-        } else {
-          if (errorElement) errorElement.classList.add("hidden");
-        }
-      });
-    }
-
-    return isValid;
-  }
-
-  getSelectedVariations(productId) {
-    const product = this.products.find((p) => p.id === parseInt(productId));
-    if (!product) return [];
-
-    const variations = [];
-
-    if (product.variations && product.variations.length > 0) {
-      product.variations.forEach((variation, index) => {
-        const select = document.getElementById(
-          `variation-${productId}-${index}`
-        );
-        if (!select) return;
-
-        const selectedOption = select.options[select.selectedIndex];
-
-        if (select.value && select.value !== "") {
-          variations.push({
-            name: variation.name,
-            value: selectedOption.text,
-            image: selectedOption.getAttribute("data-image") || "",
-          });
-        }
-      });
-    }
-
-    return variations;
-  }
-
-  addToCart(productId) {
-    if (!this.validateProductForm(productId)) {
-      this.showToast("Por favor complete todas las opciones requeridas");
-      return;
-    }
-
-    const quantityInput = document.getElementById(`quantity-${productId}`);
-    const quantity = quantityInput ? parseInt(quantityInput.value) || 1 : 1;
-    const variations = this.getSelectedVariations(productId);
-    const product = this.products.find((p) => p.id === parseInt(productId));
-    if (!product) return;
-
-    const productImage = document.getElementById(`product-image-${productId}`);
-    const imageSrc = productImage ? productImage.src : product.baseImage;
-
-    // Buscar si el producto ya está en el carrito con las mismas variaciones
-    const existingItemIndex = this.cart.findIndex(
-      (item) =>
-        item.id === product.id &&
-        JSON.stringify(item.variations) === JSON.stringify(variations)
-    );
-
-    if (existingItemIndex >= 0) {
-      this.cart[existingItemIndex].quantity += quantity;
-    } else {
-      this.cart.push({
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        quantity: quantity,
-        variations: variations,
-        image: imageSrc,
-      });
-    }
-
-    this.updateCartUI();
-    this.toggleProductDetails(productId);
-    this.showToast("Producto agregado al carrito");
-  }
-
-  buyNow(productId) {
-    if (!this.validateProductForm(productId)) {
-      this.showToast("Por favor complete todas las opciones requeridas");
-      return;
-    }
-
-    this.addToCart(productId);
-    this.toggleCart();
-    this.showCheckoutModal();
-  }
-
-  calculateSubtotal() {
-    return this.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  }
-
-  updateCartUI() {
-    const cartItemsElement = document.getElementById("cart-items");
-    const cartCountElement = document.getElementById("cart-count");
-    const cartItemsCountElement = document.getElementById("cart-items-count");
-    const cartTotalElement = document.getElementById("cart-total-amount");
-    const checkoutButton = document.getElementById("checkout-button");
-
-    if (
-      !cartItemsElement ||
-      !cartCountElement ||
-      !cartItemsCountElement ||
-      !cartTotalElement ||
-      !checkoutButton
-    )
-      return;
-
-    // Actualizar contador
-    const totalItems = this.cart.reduce(
-      (total, item) => total + item.quantity,
-      0
-    );
-    cartCountElement.textContent = totalItems;
-    cartItemsCountElement.textContent = `${totalItems} ${
-      totalItems === 1 ? "item" : "items"
-    }`;
-
-    // Actualizar lista de items
-    cartItemsElement.innerHTML = this.cart
-      .map(
-        (item, index) => `
-      <div class="cart-item">
-        <img src="${item.image}" alt="${item.name}" class="cart-item-image">
-        <div class="cart-item-details">
-          <h5>${item.name}</h5>
-          ${
-            item.variations.length > 0
-              ? `<div class="cart-item-variations">
-              ${item.variations
-                .map((v) => `<span>${v.name}: ${v.value}</span>`)
-                .join("")}
-            </div>`
-              : ""
-          }
-          <div class="cart-item-quantity">
-            <button class="quantity-btn" data-index="${index}" data-action="decrease">-</button>
-            <span>${item.quantity}</span>
-            <button class="quantity-btn" data-index="${index}" data-action="increase">+</button>
-          </div>
-          <span class="cart-item-price">$${(item.price * item.quantity).toFixed(
-            2
-          )}</span>
-        </div>
-        <button class="remove-item" data-index="${index}">×</button>
+    <!-- Configurator -->
+    <div class="sv-config-panel" id="sv-config">
+      <div class="sv-config-inner" id="sv-config-inner">
+        ${this._configHTML(this.activeProduct)}
       </div>
-    `
+    </div>
+
+    <!-- Cart -->
+    <div class="sv-cart" id="sv-cart">
+      <div class="sv-cart-head">
+        <span class="sv-cart-title"><i class="ri-shopping-cart-2-line"></i> Carrito</span>
+        <span class="sv-cart-count" id="sv-cart-count">0 productos</span>
+      </div>
+      <div class="sv-cart-body" id="sv-cart-body">
+        <div class="sv-cart-empty" id="sv-cart-empty">
+          <i class="ri-shopping-cart-line"></i>
+          <p>Tu carrito está vacío</p>
+        </div>
+        <div class="sv-cart-items" id="sv-cart-items" style="display:none"></div>
+      </div>
+      <div class="sv-cart-foot" id="sv-cart-foot" style="display:none">
+        <div class="sv-cart-total-row">
+          <span>Total</span>
+          <span class="sv-cart-total" id="sv-cart-total">$0</span>
+        </div>
+        <button class="sv-checkout-btn" id="sv-checkout-btn">
+          <i class="ri-whatsapp-line"></i> Hacer pedido por WhatsApp
+        </button>
+        <button class="sv-clear-btn" id="sv-clear-btn">Vaciar carrito</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Checkout modal -->
+<div class="sv-modal-overlay" id="sv-modal" style="display:none">
+  <div class="sv-modal-box">
+    <div class="sv-modal-head">
+      <div>
+        <h3>Finalizar pedido</h3>
+        <p>Revisá tu pedido y completá tus datos</p>
+      </div>
+      <button class="sv-modal-close" id="sv-modal-close"><i class="ri-close-line"></i></button>
+    </div>
+    <div class="sv-modal-body">
+      <div class="sv-modal-items" id="sv-modal-items"></div>
+      <div class="sv-modal-prices" id="sv-modal-prices"></div>
+      <div class="sv-modal-form">
+        <div class="sv-form-row">
+          <div class="sv-form-group">
+            <label>Nombre completo *</label>
+            <input type="text" id="sv-name" placeholder="Tu nombre completo" autocomplete="name" />
+            <span class="sv-field-err" id="sv-err-name"></span>
+          </div>
+          <div class="sv-form-group">
+            <label>Método de pago *</label>
+            <select id="sv-pay">
+              <option value="" disabled selected>Seleccioná</option>
+              <option value="Prex">Prex</option>
+              <option value="Efectivo">Efectivo al recibir</option>
+              <option value="MercadoPago">MercadoPago (+10%)</option>
+            </select>
+            <span class="sv-field-err" id="sv-err-pay"></span>
+          </div>
+        </div>
+        <div class="sv-form-row">
+          <div class="sv-form-group">
+            <label>Entrega *</label>
+            <select id="sv-del">
+              <option value="" disabled selected>Seleccioná</option>
+              <option value="Coordinar">A coordinar</option>
+              <option value="Retiro">Retiro en persona</option>
+              <option value="Envío">Envío a domicilio (+$5)</option>
+            </select>
+            <span class="sv-field-err" id="sv-err-del"></span>
+          </div>
+          <div class="sv-form-group" id="sv-addr-group" style="display:none">
+            <label>Dirección de envío</label>
+            <input type="text" id="sv-addr" placeholder="Calle, número, localidad" />
+          </div>
+        </div>
+        <div class="sv-form-group">
+          <label>Notas (opcional)</label>
+          <textarea id="sv-notes" rows="2" placeholder="Instrucciones especiales, horarios..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="sv-modal-foot">
+      <button class="sv-modal-back" id="sv-modal-back"><i class="ri-arrow-left-line"></i> Volver</button>
+      <button class="sv-modal-confirm" id="sv-modal-confirm"><i class="ri-whatsapp-line"></i> Confirmar pedido</button>
+    </div>
+  </div>
+</div>
+`;
+    this._bind();
+    this._renderCart();
+  }
+
+  // ── Product row (left panel) ───────────────────────────────
+  _productRow(p) {
+    return `
+    <div class="sv-product-row ${p.id === this.activeProduct.id ? "active" : ""}"
+         data-pid="${p.id}" role="button" tabindex="0">
+      <div class="sv-product-img">
+        <img src="${p.baseImage}" alt="${p.name}"
+             onerror="this.src='client/assets/img/product-placeholder.svg'" />
+        ${p.badge ? `<span class="sv-product-badge">${p.badge}</span>` : ""}
+      </div>
+      <div class="sv-product-info">
+        <div class="sv-product-name">${p.name}</div>
+        <div class="sv-product-desc">${p.description}</div>
+      </div>
+      <div class="sv-product-price">
+        <span class="sv-price-cur">${p.currency}</span>
+        <span class="sv-price-amt">${p.price.toLocaleString("es-UY")}</span>
+      </div>
+    </div>`;
+  }
+
+  // ── Configurator HTML ──────────────────────────────────────
+  _configHTML(p) {
+    const sel = this.selections[p.id] || {};
+    const qty = this.quantities[p.id] || 1;
+
+    const varHtml = p.variations
+      .map(
+        (v, vi) => `
+      <div class="sv-var-group">
+        <div class="sv-var-label">${v.name}${v.required ? " *" : ""}</div>
+        <div class="sv-var-opts">
+          ${v.options
+            .map(
+              (o, oi) => `
+            <button class="sv-var-opt ${sel[vi] === oi ? "selected" : ""}"
+                    data-pid="${p.id}" data-vi="${vi}" data-oi="${oi}"
+                    data-img="${o.image || ""}">
+              ${o.name}
+            </button>`,
+            )
+            .join("")}
+        </div>
+        <div class="sv-var-err hidden" id="sv-verr-${p.id}-${vi}">Seleccioná una opción</div>
+      </div>`,
       )
       .join("");
 
-    // Calcular total
-    const total = this.calculateSubtotal();
-    cartTotalElement.textContent = `$${total.toFixed(2)}`;
-
-    // Habilitar/deshabilitar botón de checkout
-    if (this.cart.length === 0) {
-      checkoutButton.classList.add("empty");
-      checkoutButton.disabled = true;
-    } else {
-      checkoutButton.classList.remove("empty");
-      checkoutButton.disabled = false;
-    }
-
-    // Agregar eventos a los botones de cantidad y eliminar
-    document.querySelectorAll(".quantity-btn").forEach((button) => {
-      button.addEventListener("click", (e) => {
-        const index = parseInt(e.target.getAttribute("data-index"));
-        const action = e.target.getAttribute("data-action");
-
-        if (action === "increase") {
-          this.cart[index].quantity += 1;
-        } else if (action === "decrease") {
-          if (this.cart[index].quantity > 1) {
-            this.cart[index].quantity -= 1;
-          } else {
-            this.cart.splice(index, 1);
-          }
-        }
-
-        this.updateCartUI();
-      });
-    });
-
-    document.querySelectorAll(".remove-item").forEach((button) => {
-      button.addEventListener("click", (e) => {
-        const index = parseInt(e.target.getAttribute("data-index"));
-        this.cart.splice(index, 1);
-        this.updateCartUI();
-        this.showToast("Producto eliminado del carrito");
-      });
-    });
-  }
-
-  showCheckoutModal() {
-    if (this.cart.length === 0) {
-      this.showToast("El carrito está vacío");
-      return;
-    }
-
-    // Eliminar modal existente si hay uno
-    const existingModal = document.getElementById("checkout-modal");
-    if (existingModal) {
-      document.body.removeChild(existingModal);
-    }
-
-    // Crear estructura completa del modal
-    const modalHTML = `
-    <div id="checkout-modal" class="modal-overlay">
-      <div class="modal-container">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h3>Finalizar Compra</h3>
-            <button class="modal-close">&times;</button>
-          </div>
-          <div class="modal-body">
-            <div class="checkout-items">
-              ${this.cart
-                .map(
-                  (item) => `
-                <div class="checkout-item">
-                  <div class="checkout-item-name">
-                    <span>${item.name} x${item.quantity}</span>
-                    ${
-                      item.variations.length > 0
-                        ? `
-                      <div class="checkout-item-variations">
-                        ${item.variations
-                          .map((v) => `<span>${v.name}: ${v.value}</span>`)
-                          .join("")}
-                      </div>`
-                        : ""
-                    }
-                  </div>
-                  <span class="checkout-item-price">$${(
-                    item.price * item.quantity
-                  ).toFixed(2)}</span>
-                </div>
-              `
-                )
-                .join("")}
-            </div>
-            
-            <div class="checkout-summary">
-              <div class="summary-row">
-                <span>Subtotal:</span>
-                <span>$${this.calculateSubtotal().toFixed(2)}</span>
-              </div>
-              <div class="summary-row" id="payment-surcharge-row">
-                <span>Recargo por pago:</span>
-                <span>$0.00</span>
-              </div>
-              <div class="summary-row" id="delivery-cost-row">
-                <span>Costo de envío:</span>
-                <span>$0.00</span>
-              </div>
-              <div class="checkout-total">
-                <span>Total:</span>
-                <span>$${this.calculateSubtotal().toFixed(2)}</span>
-              </div>
-            </div>
-            
-            <form id="checkout-form">
-              <div class="form-group">
-                <label for="checkout-payment">Método de Pago:</label>
-                <select id="checkout-payment" class="form-control" required>
-                  <option value="" disabled selected>Seleccione método</option>
-                  <option value="Transferencia">Transferencia vía Prex</option>
-                  <option value="Efectivo">Efectivo al recibir</option>
-                  <option value="MercadoPago">MercadoPago (10% adicional)</option>
-                </select>
-              </div>
-              
-              <div class="form-group">
-                <label for="checkout-delivery">Método de Entrega:</label>
-                <select id="checkout-delivery" class="form-control" required>
-                  <option value="" disabled selected>Seleccione método</option>
-                  <option value="A coordinar">A coordinar</option>
-                  <option value="Retiro en persona">Retiro en persona</option>
-                  <option value="Envío a domicilio">Envío rápido ($5)</option>
-                </select>
-              </div>
-              
-              <div class="form-group">
-                <label for="checkout-name">Nombre completo:</label>
-                <input type="text" id="checkout-name" class="form-control" required />
-              </div>
-              
-              <div class="form-group hidden" id="address-group">
-                <label for="checkout-address">Dirección de envío:</label>
-                <input type="text" id="checkout-address" class="form-control" />
-                <span class="validation-error hidden">La dirección es requerida para envío a domicilio</span>
-              </div>
-              
-              <div class="form-group">
-                <label for="checkout-comments">Comentarios adicionales:</label>
-                <textarea id="checkout-comments" class="form-control" rows="3"></textarea>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button id="cancel-checkout" class="btn btn-secondary">Cancelar</button>
-            <button id="confirm-checkout" class="btn btn-primary">Confirmar Compra</button>
-          </div>
+    return `
+      <div class="sv-config-header">
+        <div class="sv-config-img-wrap">
+          <img class="sv-config-img" id="sv-config-img-${p.id}"
+               src="${p.baseImage}" alt="${p.name}"
+               onerror="this.src='client/assets/img/product-placeholder.svg'" />
+          ${p.badge ? `<span class="sv-product-badge">${p.badge}</span>` : ""}
+        </div>
+        <div class="sv-config-info">
+          <div class="sv-config-name">${p.name}</div>
+          <div class="sv-config-desc">${p.description}</div>
+          <div class="sv-config-price">${p.currency}${p.price.toLocaleString("es-UY")}</div>
         </div>
       </div>
-    </div>
-    `;
 
-    // Insertar el modal en el body
-    document.body.insertAdjacentHTML("beforeend", modalHTML);
-    document.body.classList.add("modal-open");
+      ${p.variations.length ? `<div class="sv-vars">${varHtml}</div>` : ""}
 
-    // Configurar eventos
-    const modal = document.getElementById("checkout-modal");
-    const closeModal = () => {
-      document.body.classList.remove("modal-open");
-      modal.style.opacity = "0";
-      setTimeout(() => {
-        if (modal.parentNode) {
-          modal.parentNode.removeChild(modal);
+      <div class="sv-qty-add">
+        <div class="sv-qty-ctrl">
+          <button class="sv-qty-btn" data-pid="${p.id}" data-action="dec">−</button>
+          <span class="sv-qty-val" id="sv-qty-${p.id}">${qty}</span>
+          <button class="sv-qty-btn" data-pid="${p.id}" data-action="inc">+</button>
+        </div>
+        <button class="sv-add-btn" data-pid="${p.id}">
+          <i class="ri-shopping-cart-2-line"></i> Agregar al carrito
+        </button>
+      </div>`;
+  }
+
+  // ── Bind all events ────────────────────────────────────────
+  _bind() {
+    // Product row selection
+    this.content.querySelectorAll(".sv-product-row").forEach((row) => {
+      const activate = () => {
+        const pid = +row.dataset.pid;
+        this.activeProduct = this.products.find((p) => p.id === pid);
+        this.content
+          .querySelectorAll(".sv-product-row")
+          .forEach((r) => r.classList.remove("active"));
+        row.classList.add("active");
+        document.getElementById("sv-config-inner").innerHTML = this._configHTML(
+          this.activeProduct,
+        );
+        this._bindConfig();
+      };
+      row.addEventListener("click", activate);
+      row.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          activate();
         }
-      }, 300);
-    };
+      });
+    });
 
-    // Mostrar con animación
-    setTimeout(() => {
-      document.getElementById("checkout-modal").style.opacity = "1";
-    }, 10);
+    this._bindConfig();
 
-    // Eventos de cierre
-    modal.querySelector(".modal-close").addEventListener("click", closeModal);
-    modal
-      .querySelector("#cancel-checkout")
-      .addEventListener("click", closeModal);
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) {
-        closeModal();
-      }
+    // Cart actions
+    document
+      .getElementById("sv-checkout-btn")
+      ?.addEventListener("click", () => this._openModal());
+    document.getElementById("sv-clear-btn")?.addEventListener("click", () => {
+      this.cart = [];
+      this._save();
+      this._renderCart();
+      this._toast("Carrito vaciado", "info");
+    });
+
+    // Modal
+    document
+      .getElementById("sv-modal-close")
+      ?.addEventListener("click", () => this._closeModal());
+    document
+      .getElementById("sv-modal-back")
+      ?.addEventListener("click", () => this._closeModal());
+    document.getElementById("sv-modal")?.addEventListener("click", (e) => {
+      if (e.target.id === "sv-modal") this._closeModal();
+    });
+    document
+      .getElementById("sv-modal-confirm")
+      ?.addEventListener("click", () => this._processOrder());
+    document
+      .getElementById("sv-pay")
+      ?.addEventListener("change", () => this._updatePrices());
+    document.getElementById("sv-del")?.addEventListener("change", () => {
+      this._updatePrices();
+      const del = document.getElementById("sv-del")?.value;
+      const ag = document.getElementById("sv-addr-group");
+      if (ag) ag.style.display = del === "Envío" ? "" : "none";
     });
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        closeModal();
+      if (e.key === "Escape") this._closeModal();
+    });
+  }
+
+  _bindConfig() {
+    const p = this.activeProduct;
+
+    // Variation buttons
+    this.content
+      .querySelectorAll(`.sv-var-opt[data-pid="${p.id}"]`)
+      .forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const vi = +btn.dataset.vi;
+          const oi = +btn.dataset.oi;
+          this.content
+            .querySelectorAll(
+              `.sv-var-opt[data-pid="${p.id}"][data-vi="${vi}"]`,
+            )
+            .forEach((b) => b.classList.remove("selected"));
+          btn.classList.add("selected");
+          this.selections[p.id] = { ...this.selections[p.id], [vi]: oi };
+          if (btn.dataset.img) {
+            const img = document.getElementById(`sv-config-img-${p.id}`);
+            if (img) img.src = btn.dataset.img;
+          }
+          document
+            .getElementById(`sv-verr-${p.id}-${vi}`)
+            ?.classList.add("hidden");
+        });
+      });
+
+    // Qty
+    this.content
+      .querySelectorAll(`.sv-qty-btn[data-pid="${p.id}"]`)
+      .forEach((btn) => {
+        btn.addEventListener("click", () => {
+          let q = this.quantities[p.id] || 1;
+          if (btn.dataset.action === "inc" && q < 20) q++;
+          if (btn.dataset.action === "dec" && q > 1) q--;
+          this.quantities[p.id] = q;
+          const el = document.getElementById(`sv-qty-${p.id}`);
+          if (el) el.textContent = q;
+        });
+      });
+
+    // Add to cart
+    this.content
+      .querySelector(`.sv-add-btn[data-pid="${p.id}"]`)
+      ?.addEventListener("click", () => this._addToCart(p.id));
+  }
+
+  _addToCart(pid) {
+    const p = this.products.find((x) => x.id === pid);
+    let ok = true;
+
+    // Validate required variations
+    p.variations.forEach((v, vi) => {
+      if (!v.required) return;
+      const err = document.getElementById(`sv-verr-${pid}-${vi}`);
+      if (this.selections[pid]?.[vi] === undefined) {
+        err?.classList.remove("hidden");
+        ok = false;
+      } else {
+        err?.classList.add("hidden");
       }
     });
+    if (!ok) return;
 
-    // Eventos de los selects
-    document
-      .getElementById("checkout-delivery")
-      .addEventListener("change", (e) => {
-        this.updateCheckoutSummary();
-        const addressGroup = document.getElementById("address-group");
-        if (e.target.value === "Envío a domicilio") {
-          addressGroup.classList.remove("hidden");
-          document
-            .getElementById("checkout-address")
-            .setAttribute("required", "true");
-        } else {
-          addressGroup.classList.add("hidden");
-          document
-            .getElementById("checkout-address")
-            .removeAttribute("required");
-        }
-      });
+    const sel = this.selections[pid] || {};
+    const vars = p.variations
+      .map((v, vi) => {
+        const oi = sel[vi];
+        return oi !== undefined
+          ? { name: v.name, value: v.options[oi].name }
+          : null;
+      })
+      .filter(Boolean);
 
-    document
-      .getElementById("checkout-payment")
-      .addEventListener("change", () => {
-        this.updateCheckoutSummary();
-      });
-
-    document
-      .getElementById("confirm-checkout")
-      .addEventListener("click", () => {
-        this.processCheckout();
-      });
-
-    // Actualizar resumen inicial
-    this.updateCheckoutSummary();
-  }
-
-  handleKeyDown(e) {
-    if (e.key === "Escape") {
-      const overlay = document.getElementById("modal-overlay");
-      if (overlay) {
-        this.closeCheckoutModal(overlay);
-      }
-    }
-  }
-
-  updateCheckoutSummary() {
-    const paymentMethod = document.getElementById("checkout-payment")?.value;
-    const deliveryMethod = document.getElementById("checkout-delivery")?.value;
-    const subtotal = this.calculateSubtotal();
-
-    let paymentSurcharge = 0;
-    if (paymentMethod === "MercadoPago") {
-      paymentSurcharge = subtotal * 0.1;
-    }
-
-    let deliveryCost = 0;
-    if (deliveryMethod === "Envío a domicilio") {
-      deliveryCost = 5;
-    }
-
-    const total = subtotal + paymentSurcharge + deliveryCost;
-
-    // Actualizar resumen
-    const paymentSurchargeElement = document.querySelector(
-      "#payment-surcharge-row span:last-child"
-    );
-    const deliveryCostElement = document.querySelector(
-      "#delivery-cost-row span:last-child"
-    );
-    const totalElement = document.querySelector(
-      ".checkout-total span:last-child"
+    const qty = this.quantities[pid] || 1;
+    const img =
+      document.getElementById(`sv-config-img-${pid}`)?.src || p.baseImage;
+    const key = JSON.stringify(vars);
+    const idx = this.cart.findIndex(
+      (x) => x.id === pid && JSON.stringify(x.variations) === key,
     );
 
-    if (paymentSurchargeElement) {
-      paymentSurchargeElement.textContent = `$${paymentSurcharge.toFixed(2)}`;
+    if (idx >= 0) this.cart[idx].quantity += qty;
+    else
+      this.cart.push({
+        id: pid,
+        name: p.name,
+        price: p.price,
+        quantity: qty,
+        variations: vars,
+        image: img,
+      });
+
+    this._save();
+    this._renderCart();
+    this._toast(`✓ ${p.name} agregado`, "success");
+
+    // Reset qty
+    this.quantities[pid] = 1;
+    const qEl = document.getElementById(`sv-qty-${pid}`);
+    if (qEl) qEl.textContent = 1;
+  }
+
+  // ── Cart rendering ─────────────────────────────────────────
+  _renderCart() {
+    const count = this._count();
+    const total = this._subtotal();
+
+    const countEl = document.getElementById("sv-cart-count");
+    const emptyEl = document.getElementById("sv-cart-empty");
+    const itemsEl = document.getElementById("sv-cart-items");
+    const footEl = document.getElementById("sv-cart-foot");
+    const totalEl = document.getElementById("sv-cart-total");
+
+    if (countEl)
+      countEl.textContent = `${count} producto${count !== 1 ? "s" : ""}`;
+    if (totalEl) totalEl.textContent = this._fmt(total);
+
+    if (count === 0) {
+      if (emptyEl) emptyEl.style.display = "";
+      if (itemsEl) itemsEl.style.display = "none";
+      if (footEl) footEl.style.display = "none";
+      return;
     }
-    if (deliveryCostElement) {
-      deliveryCostElement.textContent = `$${deliveryCost.toFixed(2)}`;
-    }
-    if (totalElement) {
-      totalElement.textContent = `$${total.toFixed(2)}`;
+
+    if (emptyEl) emptyEl.style.display = "none";
+    if (itemsEl) itemsEl.style.display = "";
+    if (footEl) footEl.style.display = "";
+
+    if (itemsEl) {
+      itemsEl.innerHTML = this.cart
+        .map(
+          (item, idx) => `
+        <div class="sv-cart-item">
+          <img class="sv-cart-item-img" src="${item.image}"
+               onerror="this.src='client/assets/img/product-placeholder.svg'" />
+          <div class="sv-cart-item-info">
+            <div class="sv-cart-item-name">${item.name}</div>
+            ${
+              (item.variations || []).length
+                ? `<div class="sv-cart-item-vars">${item.variations.map((v) => `${v.name}: ${v.value}`).join(" · ")}</div>`
+                : ""
+            }
+            <div class="sv-cart-item-controls">
+              <button class="sv-cqty-btn" data-idx="${idx}" data-action="dec">−</button>
+              <span class="sv-cqty-val">${item.quantity}</span>
+              <button class="sv-cqty-btn" data-idx="${idx}" data-action="inc">+</button>
+              <span class="sv-citem-price">${this._fmt(item.price * item.quantity)}</span>
+            </div>
+          </div>
+          <button class="sv-cart-del" data-idx="${idx}" aria-label="Eliminar"><i class="ri-delete-bin-6-line"></i></button>
+        </div>`,
+        )
+        .join("");
+
+      itemsEl.querySelectorAll(".sv-cqty-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const i = +btn.dataset.idx;
+          if (btn.dataset.action === "inc" && this.cart[i].quantity < 20)
+            this.cart[i].quantity++;
+          else if (btn.dataset.action === "dec") {
+            if (this.cart[i].quantity > 1) this.cart[i].quantity--;
+            else {
+              this.cart.splice(i, 1);
+            }
+          }
+          this._save();
+          this._renderCart();
+        });
+      });
+      itemsEl.querySelectorAll(".sv-cart-del").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const name = this.cart[+btn.dataset.idx].name;
+          this.cart.splice(+btn.dataset.idx, 1);
+          this._save();
+          this._renderCart();
+          this._toast(`${name} eliminado`, "info");
+        });
+      });
     }
   }
 
-  closeCheckoutModal(overlay) {
-    if (!overlay) return;
-
-    // Animación de salida
-    overlay.style.opacity = "0";
-    const modal = overlay.querySelector(".modal");
-    if (modal) {
-      modal.style.transform = "translateY(20px)";
+  // ── Modal ──────────────────────────────────────────────────
+  _openModal() {
+    if (!this.cart.length) {
+      this._toast("El carrito está vacío", "warn");
+      return;
     }
+    const modal = document.getElementById("sv-modal");
+    if (!modal) return;
+    this._updatePrices();
+    const itemsEl = document.getElementById("sv-modal-items");
+    if (itemsEl) {
+      itemsEl.innerHTML = this.cart
+        .map(
+          (item) => `
+        <div class="sv-modal-item">
+          <img src="${item.image}" onerror="this.src='client/assets/img/product-placeholder.svg'" />
+          <div>
+            <div class="sv-modal-item-name">${item.name} <span>×${item.quantity}</span></div>
+            ${(item.variations || []).length ? `<div class="sv-modal-item-vars">${item.variations.map((v) => `${v.name}: ${v.value}`).join(" · ")}</div>` : ""}
+          </div>
+          <div class="sv-modal-item-price">${this._fmt(item.price * item.quantity)}</div>
+        </div>`,
+        )
+        .join("");
+    }
+    modal.style.display = "";
+    requestAnimationFrame(() => modal.classList.add("open"));
+    document.body.style.overflow = "hidden";
+  }
 
-    // Eliminar después de la animación
+  _closeModal() {
+    const modal = document.getElementById("sv-modal");
+    if (!modal) return;
+    modal.classList.remove("open");
     setTimeout(() => {
-      document.body.classList.remove("no-scroll");
-      document.removeEventListener("keydown", this.handleKeyDown);
-      if (overlay && overlay.parentNode) {
-        overlay.parentNode.removeChild(overlay);
-      }
-    }, 300);
+      modal.style.display = "none";
+    }, 280);
+    document.body.style.overflow = "";
   }
 
-  processCheckout() {
-    const paymentMethod = document.getElementById("checkout-payment")?.value;
-    const deliveryMethod = document.getElementById("checkout-delivery")?.value;
-    const name = document.getElementById("checkout-name")?.value.trim();
-    const address = document.getElementById("checkout-address")?.value.trim();
-    const comments = document.getElementById("checkout-comments")?.value.trim();
-
-    // Validaciones
-    if (!paymentMethod || paymentMethod === "Seleccione método") {
-      this.showToast("Por favor seleccione un método de pago");
-      return;
+  _updatePrices() {
+    const sub = this._subtotal();
+    const pay = document.getElementById("sv-pay")?.value;
+    const del = document.getElementById("sv-del")?.value;
+    const surcharge = pay === "MercadoPago" ? sub * 0.1 : 0;
+    const delivery = del === "Envío" ? 5 : 0;
+    const pricesEl = document.getElementById("sv-modal-prices");
+    if (pricesEl) {
+      pricesEl.innerHTML = `
+        <div class="sv-price-row"><span>Subtotal</span><span>${this._fmt(sub)}</span></div>
+        ${surcharge ? `<div class="sv-price-row"><span>Recargo MercadoPago</span><span>${this._fmt(surcharge)}</span></div>` : ""}
+        ${delivery ? `<div class="sv-price-row"><span>Envío</span><span>${this._fmt(delivery)}</span></div>` : ""}
+        <div class="sv-price-total"><span>Total</span><span>${this._fmt(sub + surcharge + delivery)}</span></div>`;
     }
+  }
 
-    if (!deliveryMethod || deliveryMethod === "Seleccione método") {
-      this.showToast("Por favor seleccione un método de entrega");
-      return;
-    }
+  _processOrder() {
+    const name = document.getElementById("sv-name")?.value.trim();
+    const pay = document.getElementById("sv-pay")?.value;
+    const del = document.getElementById("sv-del")?.value;
+    const addr = document.getElementById("sv-addr")?.value.trim();
+    const notes = document.getElementById("sv-notes")?.value.trim();
 
-    if (!name) {
-      this.showToast("Por favor ingrese su nombre completo");
-      return;
-    }
+    let ok = true;
+    const setErr = (id, msg) => {
+      const e = document.getElementById(id);
+      if (e) e.textContent = msg;
+      ok = false;
+    };
+    const clrErr = (id) => {
+      const e = document.getElementById(id);
+      if (e) e.textContent = "";
+    };
 
-    if (deliveryMethod === "Envío a domicilio" && !address) {
-      const addressError = document.querySelector(
-        "#address-group .validation-error"
-      );
-      if (addressError) addressError.classList.remove("hidden");
-      this.showToast("Por favor ingrese su dirección de envío");
-      return;
-    }
+    if (!name) setErr("sv-err-name", "Ingresá tu nombre");
+    else clrErr("sv-err-name");
+    if (!pay) setErr("sv-err-pay", "Seleccioná un método");
+    else clrErr("sv-err-pay");
+    if (!del) setErr("sv-err-del", "Seleccioná entrega");
+    else clrErr("sv-err-del");
+    if (!ok) return;
 
-    // Calcular total con recargos
-    const subtotal = this.calculateSubtotal();
-    let paymentSurcharge = 0;
-    if (paymentMethod === "MercadoPago") {
-      paymentSurcharge = subtotal * 0.1;
-    }
+    const sub = this._subtotal();
+    const surcharge = pay === "MercadoPago" ? sub * 0.1 : 0;
+    const delivery = del === "Envío" ? 5 : 0;
+    const total = sub + surcharge + delivery;
 
-    let deliveryCost = 0;
-    if (deliveryMethod === "Envío a domicilio") {
-      deliveryCost = 5;
-    }
-
-    const total = subtotal + paymentSurcharge + deliveryCost;
-
-    // Construir mensaje
-    const message = `*Solicitud de Compra*
--------------------------------------
-Productos:
+    const msg = `*Pedido — Filipovich™*
+${"─".repeat(30)}
 ${this.cart
-  .map((item) => {
-    return `${item.name} x${item.quantity} - $${(
-      item.price * item.quantity
-    ).toFixed(2)}
-  ${item.variations.map((v) => `- ${v.name}: ${v.value}`).join("\n  ")}`;
-  })
+  .map(
+    (i) =>
+      `• ${i.name} ×${i.quantity} → ${this._fmt(i.price * i.quantity)}` +
+      ((i.variations || []).length
+        ? `\n  ${i.variations.map((v) => `${v.name}: ${v.value}`).join(", ")}`
+        : ""),
+  )
   .join("\n")}
--------------------------------------
-Subtotal: $${subtotal.toFixed(2)}
-${
-  paymentSurcharge > 0
-    ? `Recargo por pago (${paymentMethod}): $${paymentSurcharge.toFixed(2)}\n`
-    : ""
-}
-${deliveryCost > 0 ? `Costo de envío: $${deliveryCost.toFixed(2)}\n` : ""}
-Total: $${total.toFixed(2)}
--------------------------------------
-Método de pago: ${paymentMethod}
-Método de entrega: ${deliveryMethod}
-Nombre: ${name}
-${deliveryMethod === "Envío a domicilio" ? `Dirección: ${address}\n` : ""}
-Comentarios: ${comments || "Sin comentarios"}
-Fecha: ${new Date().toLocaleDateString()}
-Hora: ${new Date().toLocaleTimeString()}`;
+${"─".repeat(30)}
+Subtotal: ${this._fmt(sub)}${surcharge ? `\nRecargo (MercadoPago): ${this._fmt(surcharge)}` : ""}${delivery ? `\nEnvío: ${this._fmt(delivery)}` : ""}
+*Total: ${this._fmt(total)}*
+${"─".repeat(30)}
+Pago: ${pay}
+Entrega: ${del}${addr ? `\nDirección: ${addr}` : ""}
+Nombre: ${name}${notes ? `\nNotas: ${notes}` : ""}
+Fecha: ${new Date().toLocaleString("es-UY")}`;
 
-    const whatsappUrl = `https://wa.me/59892955928?text=${encodeURIComponent(
-      message
-    )}`;
-    window.open(whatsappUrl, "_blank");
-
-    // Cerrar modal y limpiar carrito
-    this.closeCheckoutModal(document.getElementById("modal-overlay"));
-    this.cart = [];
-    this.updateCartUI();
-    this.toggleCart();
-    this.showToast("Compra realizada con éxito");
-  }
-
-  showToast(message) {
-    const toast = document.createElement("div");
-    toast.className = "toast";
-    toast.textContent = message;
-    document.body.appendChild(toast);
-
-    setTimeout(() => {
-      toast.classList.add("show");
-    }, 10);
-
-    setTimeout(() => {
-      toast.classList.remove("show");
-      setTimeout(() => {
-        document.body.removeChild(toast);
-      }, 300);
-    }, 3000);
-  }
-
-  toggleProductDetails(productId) {
-    // Cerrar otros abiertos
-    document.querySelectorAll(".product-details.active").forEach((el) => {
-      if (el.id !== `product-details-${productId}`) {
-        el.classList.remove("active");
-        const id = el.id.split("product-details-")[1];
-        const interestButton = document.getElementById(`interest-button-${id}`);
-        if (interestButton) interestButton.classList.remove("hidden");
-      }
-    });
-
-    const details = document.getElementById(`product-details-${productId}`);
-    const interestButton = document.getElementById(
-      `interest-button-${productId}`
+    window.open(
+      `https://wa.me/59892955928?text=${encodeURIComponent(msg)}`,
+      "_blank",
     );
+    this._closeModal();
+    this.cart = [];
+    this._save();
+    this._renderCart();
+    this._toast("¡Pedido enviado! 🎉", "success");
+  }
 
-    if (!details || !interestButton) return;
-
-    if (!details.classList.contains("active")) {
-      details.classList.add("active");
-      interestButton.classList.add("hidden");
-    } else {
-      details.classList.remove("active");
-      interestButton.classList.remove("hidden");
-    }
+  // ── Toast ──────────────────────────────────────────────────
+  _toast(msg, type = "info") {
+    document.querySelectorAll(".sv-toast").forEach((t) => t.remove());
+    const colors = {
+      success: "var(--e-dp)",
+      warn: "#B06E00",
+      info: "var(--s-dk)",
+    };
+    const icons = {
+      success: "ri-checkbox-circle-line",
+      warn: "ri-error-warning-line",
+      info: "ri-information-2-line",
+    };
+    const el = document.createElement("div");
+    el.className = "sv-toast";
+    el.style.background = colors[type] || colors.info;
+    el.innerHTML = `<i class="${icons[type] || icons.info}"></i><span>${msg}</span>`;
+    document.body.appendChild(el);
+    requestAnimationFrame(() => el.classList.add("show"));
+    setTimeout(() => {
+      el.classList.remove("show");
+      setTimeout(() => el.remove(), 300);
+    }, 3000);
   }
 }

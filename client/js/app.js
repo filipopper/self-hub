@@ -1,70 +1,134 @@
-import { NewsController } from "./controllers/news-controller.js";
-import { controllersRegistry } from "./controllers-registry.js";
-import { NewsView } from "./views/news-view.js";
+import { NewsController      } from "./controllers/news-controller.js";
+import { AboutController     } from "./controllers/about-controller.js";
+import { ContactController   } from "./controllers/contact-controller.js";
+import { StoreController     } from "./controllers/store-controller.js";
+import { HomeController      } from "./controllers/home-controller.js";
+import { ProposalsController } from "./controllers/proposals-controller.js";
+import { JoinController      } from "./controllers/join-controller.js";
+import { PollController      } from "./controllers/poll-controller.js";
 import { Model } from "./models/model.js";
+
+const REGISTRY = {
+  home:      HomeController,
+  news:      NewsController,
+  about:     AboutController,
+  contact:   ContactController,
+  store:     StoreController,
+  proposals: ProposalsController,
+  join:      JoinController,
+  poll:      PollController,
+};
 
 document.addEventListener("DOMContentLoaded", () => {
   document.body.classList.add("loaded");
 
-  // Cargar la vista actual desde el hash
-  loadControllerFromHash();
+  // Show urgency banner if active
+  showUrgencyBanner();
 
-  // Manejar clics en enlaces con `data-view`
-  document.querySelectorAll("a[data-view]").forEach((link) => {
-    link.addEventListener("click", (event) => {
-      event.preventDefault();
-      const viewId = link.getAttribute("data-view");
-      navigateTo(viewId);
-    });
+  loadFromHash();
+
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest("a[data-view]");
+    if (a) { e.preventDefault(); navigateTo(a.getAttribute("data-view")); }
   });
 
-  // Detectar cambios en la URL (cuando el usuario usa "atrás" o "adelante")
-  window.addEventListener("hashchange", loadControllerFromHash);
+  window.addEventListener("hashchange", () => { loadFromHash(); updateActiveNav(); });
+  updateActiveNav();
 });
 
-// Función para cambiar la URL con hash
 function navigateTo(viewId, postId = "") {
   location.hash = `#/${viewId}${postId ? `/${postId}` : ""}`;
 }
 
-// Función que carga el controlador basado en el hash de la URL
-async function loadControllerFromHash() {
+async function loadFromHash() {
   const content = document.getElementById("content");
   if (!content) return;
 
+  // Lock overflow so no scrollbar can flash during the swap
+  document.body.style.overflow = "hidden";
+
+  // Fade out current content
+  content.style.transition = "opacity 0.15s ease";
+  content.style.opacity = "0";
+
+  // Smooth scroll to top while content is invisible
+  window.scrollTo({ top: 0, behavior: "smooth" });
+
+  // Wait for scroll to settle (capped at 300ms)
+  await new Promise(resolve => {
+    const start = performance.now();
+    const check = () => {
+      const elapsed = performance.now() - start;
+      if (window.scrollY < 2 || elapsed > 300) return resolve();
+      requestAnimationFrame(check);
+    };
+    requestAnimationFrame(check);
+  });
+
+  // Swap content while overflow is still locked — no scrollbar possible
+  content.style.transition = "";
+  content.style.opacity = "";
   content.classList.remove("slide-in", "fade-in");
-  setTimeout(() => {
-    content.classList.add("slide-in");
-  }, 10);
+  void content.offsetWidth;
+  content.classList.add("slide-in");
 
-  // Obtener la ruta desde el hash, eliminando `#/`
-  let path = location.hash.replace("#/", "");
-  if (!path) path = "news"; // Si no hay ruta, mostrar "news"
-
+  let path = location.hash.replace(/^#\/?/, "");
+  if (!path) path = "home";
   const [viewId, postId] = path.split("/");
 
-  const ControllerClass =
-    controllersRegistry[viewId] || controllersRegistry["news"];
+  const ControllerClass = REGISTRY[viewId] ?? REGISTRY["home"];
+  const model = new Model();
+  const controller = new ControllerClass(model);
 
-  if (ControllerClass) {
-    const model = new Model();
-    const view = new NewsView();
-    const controller = new ControllerClass(model, view);
-
-    if (postId) {
-      const newsItem = await model.getNewsById(postId);
-      view.render(newsItem);
-    } else {
-      controller.init();
+  if (viewId === "news" && postId) {
+    try {
+      const item = await model.getNewsById(postId);
+      if (item) {
+        controller.view.render(item);
+      } else {
+        // Article not found — fall back to news list
+        await controller.init();
+      }
+    } catch (e) {
+      console.error("Error loading article:", e);
+      await controller.init();
     }
   } else {
-    // Si la vista no existe, mostrar error y redirigir
-    const view = new NewsView();
-    view.render(
-      "<p>Vista no encontrada. Redirigiendo a la página principal...</p>"
-    );
-    setTimeout(() => {
-      navigateTo("news");
-    }, 2000);
+    await controller.init();
   }
+
+  // Unlock overflow after new content is painted
+  requestAnimationFrame(() => {
+    document.body.style.overflow = "";
+  });
+}
+
+function updateActiveNav() {
+  const view = location.hash.replace("#/", "").split("/")[0] || "home";
+  document.querySelectorAll("#nav-links a[data-view]").forEach(a =>
+    a.classList.toggle("active", a.getAttribute("data-view") === view)
+  );
+}
+
+function showUrgencyBanner() {
+  const BANNER_KEY = "urgency-dismissed-oct2026";
+  const el = document.getElementById("urgency-banner");
+  if (!el) return;
+
+  // Hide if already dismissed this session
+  try {
+    if (sessionStorage.getItem(BANNER_KEY)) { el.style.display = "none"; return; }
+  } catch(_) {}
+
+  // Wire up close button
+  document.getElementById("urgency-close")?.addEventListener("click", () => {
+    el.style.maxHeight = el.scrollHeight + "px";
+    requestAnimationFrame(() => {
+      el.style.transition = "max-height 0.35s ease, opacity 0.35s ease";
+      el.style.maxHeight = "0";
+      el.style.opacity = "0";
+      setTimeout(() => el.remove(), 360);
+    });
+    try { sessionStorage.setItem(BANNER_KEY, "1"); } catch(_) {}
+  });
 }

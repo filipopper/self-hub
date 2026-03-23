@@ -1,93 +1,38 @@
-const CACHE_NAME = "my-cache-v1";
-const URLS_TO_CACHE = [
+const CACHE = "filipovich-v1";
+const PRECACHE = [
   "/",
   "/index.html",
-  "/assets/css/all-styles.css",
-  "/js/app.js",
-  "/assets/img/",
+  "/client/assets/css/all-styles.css",
+  "/client/js/app.js",
+  "/posts/index.json",
 ];
 
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) => cache.addAll(URLS_TO_CACHE))
-      .then(() => self.skipWaiting())
-      .catch((error) =>
-        console.error("Error during service worker installation:", error)
-      )
-  );
+self.addEventListener("install", e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
 });
 
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches
-      .keys()
-      .then((cacheNames) =>
-        Promise.all(
-          cacheNames.map((cacheName) => {
-            if (cacheName !== CACHE_NAME) {
-              return caches.delete(cacheName);
-            }
-          })
-        )
-      )
-      .then(() => self.clients.claim())
-      .catch((error) =>
-        console.error("Error during service worker activation:", error)
-      )
-  );
+self.addEventListener("activate", e => {
+  e.waitUntil(caches.keys().then(keys =>
+    Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+  ).then(() => self.clients.claim()));
 });
 
-self.addEventListener("fetch", (event) => {
-  const url = new URL(event.request.url);
-  const isSameOrigin = url.origin === location.origin;
-
-  event.respondWith(
-    isSameOrigin && URLS_TO_CACHE.includes(url.pathname)
-      ? caches.match(event.request).then(
-          (cachedResponse) =>
-            cachedResponse ||
-            fetch(event.request)
-              .then((response) => {
-                return caches.open(CACHE_NAME).then((cache) => {
-                  cache.put(event.request, response.clone());
-                  return response;
-                });
-              })
-              .catch(() => caches.match("/index.html"))
-        )
-      : fetch(event.request).catch(() => caches.match("/index.html"))
-  );
-});
-
-self.addEventListener("message", (event) => {
-  if (event.data?.type === "SAVE_DATA") {
-    const { key, data } = event.data;
-    saveToIndexedDB(key, data);
+self.addEventListener("fetch", e => {
+  if (e.request.method !== "GET") return;
+  const url = new URL(e.request.url);
+  // Network-first para posts (contenido dinámico)
+  if (url.pathname.startsWith("/posts/")) {
+    e.respondWith(
+      fetch(e.request).then(r => { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(e.request, c)); return r; })
+        .catch(() => caches.match(e.request))
+    );
+    return;
   }
+  // Cache-first para assets
+  e.respondWith(
+    caches.match(e.request).then(cached => cached || fetch(e.request).then(r => {
+      if (r.ok) { const c = r.clone(); caches.open(CACHE).then(ca => ca.put(e.request, c)); }
+      return r;
+    }))
+  );
 });
-
-function saveToIndexedDB(key, data) {
-  const request = indexedDB.open("my-database", 1);
-
-  request.onupgradeneeded = (event) => {
-    const db = event.target.result;
-    db.createObjectStore("store", { keyPath: "key" });
-  };
-
-  request.onsuccess = (event) => {
-    const db = event.target.result;
-    const transaction = db.transaction("store", "readwrite");
-    const store = transaction.objectStore("store");
-    store.put({ key, data });
-
-    transaction.onerror = (error) => {
-      console.error("Error saving data to IndexedDB:", error);
-    };
-  };
-
-  request.onerror = (error) => {
-    console.error("Error opening IndexedDB:", error);
-  };
-}

@@ -1,12 +1,5 @@
 import { StoreView } from "../views/store-view.js";
-
 export class StoreController {
-  constructor(model) {
-    this.model = model;
-    this.view = new StoreView();
-  }
-
-  init() {
-    this.view.render();
-  }
+  constructor() { this.view = new StoreView(); }
+  init() { this.view.render(); }
 }
