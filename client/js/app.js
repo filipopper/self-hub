@@ -19,12 +19,15 @@ const REGISTRY = {
   poll:      PollController,
 };
 
+let lastNormalizedHash = "";
+
 document.addEventListener("DOMContentLoaded", () => {
   document.body.classList.add("loaded");
 
   // Show urgency banner if active
   showUrgencyBanner();
 
+  lastNormalizedHash = normalizeHash();
   loadFromHash();
 
   document.addEventListener("click", (e) => {
@@ -32,7 +35,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (a) { e.preventDefault(); navigateTo(a.getAttribute("data-view")); }
   });
 
-  window.addEventListener("hashchange", () => { loadFromHash(); updateActiveNav(); });
+  window.addEventListener("hashchange", () => {
+    const currentNormalizedHash = normalizeHash();
+
+    // Ignore hash changes that only append/remove #pic so the current view
+    // is not reinitialized right before capture.
+    if (currentNormalizedHash !== lastNormalizedHash) {
+      lastNormalizedHash = currentNormalizedHash;
+      loadFromHash();
+    }
+
+    updateActiveNav();
+  });
   updateActiveNav();
 });
 
