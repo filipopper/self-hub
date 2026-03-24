@@ -19,12 +19,15 @@ const REGISTRY = {
   poll:      PollController,
 };
 
+let lastNormalizedHash = "";
+
 document.addEventListener("DOMContentLoaded", () => {
   document.body.classList.add("loaded");
 
   // Show urgency banner if active
   showUrgencyBanner();
 
+  lastNormalizedHash = normalizeHash();
   loadFromHash();
 
   document.addEventListener("click", (e) => {
@@ -32,9 +35,25 @@ document.addEventListener("DOMContentLoaded", () => {
     if (a) { e.preventDefault(); navigateTo(a.getAttribute("data-view")); }
   });
 
-  window.addEventListener("hashchange", () => { loadFromHash(); updateActiveNav(); });
+  window.addEventListener("hashchange", () => {
+    const currentNormalizedHash = normalizeHash();
+
+    // Ignore hash changes that only append/remove #pic so the current view
+    // is not reinitialized right before capture.
+    if (currentNormalizedHash !== lastNormalizedHash) {
+      lastNormalizedHash = currentNormalizedHash;
+      loadFromHash();
+    }
+
+    updateActiveNav();
+  });
   updateActiveNav();
 });
+
+
+function normalizeHash(rawHash = location.hash) {
+  return rawHash.endsWith("#pic") ? rawHash.slice(0, -4) : rawHash;
+}
 
 function navigateTo(viewId, postId = "") {
   location.hash = `#/${viewId}${postId ? `/${postId}` : ""}`;
@@ -72,7 +91,7 @@ async function loadFromHash() {
   void content.offsetWidth;
   content.classList.add("slide-in");
 
-  let path = location.hash.replace(/^#\/?/, "");
+  let path = normalizeHash().replace(/^#\/?/, "");
   if (!path) path = "home";
   const [viewId, postId] = path.split("/");
 
@@ -104,7 +123,7 @@ async function loadFromHash() {
 }
 
 function updateActiveNav() {
-  const view = location.hash.replace("#/", "").split("/")[0] || "home";
+  const view = normalizeHash().replace("#/", "").split("/")[0] || "home";
   document.querySelectorAll("#nav-links a[data-view]").forEach(a =>
     a.classList.toggle("active", a.getAttribute("data-view") === view)
   );
