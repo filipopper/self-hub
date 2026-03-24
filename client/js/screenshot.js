@@ -97,6 +97,26 @@
     });
   }
 
+
+  async function waitForMotionToEnd(root, maxWait = 2500) {
+    if (!root.getAnimations) return;
+
+    const start = Date.now();
+
+    while (Date.now() - start < maxWait) {
+      const running = root
+        .getAnimations({ subtree: true })
+        .filter((anim) => anim.playState === "running" || anim.playState === "pending");
+
+      if (running.length === 0) return;
+
+      await Promise.race([
+        Promise.allSettled(running.map((anim) => anim.finished)),
+        new Promise((resolve) => setTimeout(resolve, 120)),
+      ]);
+    }
+  }
+
   async function waitForFonts() {
     if (document.fonts && document.fonts.ready) {
       await document.fonts.ready;
@@ -163,6 +183,7 @@
       await waitForContentReady(contentEl);
       await waitForDomStability(contentEl);
       await waitForFonts();
+      await waitForMotionToEnd(contentEl);
 
       toast.querySelector("span:last-child").textContent = "Capturando…";
 
@@ -216,12 +237,6 @@
     if (!hasPic) return;
 
     const viewName = cleanHash.replace(/^#\/?/, "").split("/")[0] || "home";
-
-    history.replaceState(
-      null,
-      "",
-      location.pathname + location.search + cleanHash,
-    );
 
     const contentEl = document.getElementById("content");
     if (!contentEl) {
