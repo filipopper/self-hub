@@ -117,6 +117,20 @@
     }
   }
 
+  function freezeMotion() {
+    const style = document.createElement("style");
+    style.id = "pic-motion-freeze";
+    style.textContent = `
+      * , *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => style.remove();
+  }
+
   async function waitForFonts() {
     if (document.fonts && document.fonts.ready) {
       await document.fonts.ready;
@@ -193,6 +207,8 @@
         requestAnimationFrame(() => requestAnimationFrame(r)),
       );
 
+      const releaseMotion = freezeMotion();
+
       const bgColor =
         getComputedStyle(document.documentElement)
           .getPropertyValue("--bg-primary")
@@ -200,21 +216,26 @@
         getComputedStyle(document.body).backgroundColor ||
         "#ffffff";
 
-      const canvas = await h2c(contentEl, {
-        useCORS: true,
-        allowTaint: false,
-        scale: window.devicePixelRatio || 1,
-        backgroundColor: bgColor,
-        scrollX: 0,
-        scrollY: 0,
-        windowWidth: document.documentElement.scrollWidth,
-        windowHeight: document.documentElement.scrollHeight,
-        ignoreElements: (el) =>
-          el.id === "main-header" ||
-          el.classList.contains("footer") ||
-          el.id === "urgency-banner" ||
-          el.id === "pic-toast",
-      });
+      let canvas;
+      try {
+        canvas = await h2c(contentEl, {
+          useCORS: true,
+          allowTaint: false,
+          scale: window.devicePixelRatio || 1,
+          backgroundColor: bgColor,
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: document.documentElement.scrollWidth,
+          windowHeight: document.documentElement.scrollHeight,
+          ignoreElements: (el) =>
+            el.id === "main-header" ||
+            el.classList.contains("footer") ||
+            el.id === "urgency-banner" ||
+            el.id === "pic-toast",
+        });
+      } finally {
+        releaseMotion();
+      }
 
       const filename = `${viewName || "captura"}-${Date.now()}.png`;
 
