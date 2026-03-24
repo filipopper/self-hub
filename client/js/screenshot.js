@@ -121,9 +121,9 @@
     const style = document.createElement("style");
     style.id = "pic-motion-freeze";
     style.textContent = `
-      #content, #content *, #content *::before, #content *::after {
-        animation-play-state: paused !important;
-        transition-property: none !important;
+      * , *::before, *::after {
+        animation: none !important;
+        transition: none !important;
       }
     `;
     document.head.appendChild(style);
