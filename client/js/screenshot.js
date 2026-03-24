@@ -259,12 +259,6 @@
 
     const viewName = cleanHash.replace(/^#\/?/, "").split("/")[0] || "home";
 
-    history.replaceState(
-      null,
-      "",
-      location.pathname + location.search + cleanHash,
-    );
-
     const contentEl = document.getElementById("content");
     if (!contentEl) {
       console.error("No existe #content");
