@@ -1,0 +1,94 @@
+Uso: Evaluación técnica de aplicaciones Single Page Application bajo criterios de ingeniería profesional, independientemente del stack.
+
+1. Arquitectura y Separación de Responsabilidades
+ Existencia de una arquitectura definida (MVC, MVVM, Flux, etc.) documentada y consistente
+ Separación estricta entre lógica de negocio, renderizado y control de flujo
+ Ausencia de acoplamiento circular entre módulos
+ Capas claramente delimitadas (presentación, dominio, infraestructura)
+ Escalabilidad estructural (capacidad de agregar features sin reestructuración)
+2. Gestión de Estado (State Management)
+ Existencia de un estado global o distribuido con criterios claros
+ Estructura del estado normalizada y predecible
+ Mutaciones controladas mediante acciones o métodos definidos
+ Ausencia de estados implícitos o duplicados
+ Mecanismo de suscripción/reactividad ante cambios de estado
+ Persistencia selectiva (localStorage, sessionStorage u otro mecanismo)
+ Manejo explícito de estados transitorios (loading, error, empty)
+3. Flujo de Datos y Control
+ Flujo unidireccional o claramente definido
+ Trazabilidad de eventos (evento → acción → cambio de estado → render)
+ Centralización o estandarización del manejo de acciones
+ Ausencia de lógica duplicada en distintos puntos del sistema
+ Manejo consistente de errores a nivel de flujo
+4. Routing y Navegación
+ Implementación de routing del lado del cliente
+ Sincronización entre estado de aplicación y URL
+ Uso adecuado de History API o mecanismo equivalente
+ Soporte para rutas dinámicas
+ Manejo de rutas inexistentes (404 interno)
+ Capacidad de deep linking (acceso directo a vistas internas)
+5. Renderizado y Manipulación del DOM
+ Estrategia de renderizado definida (completo, incremental, reactivo)
+ Minimización de operaciones directas sobre el DOM
+ Actualización eficiente basada en cambios de estado
+ Evita re-renderizados innecesarios
+ Separación entre lógica de render y lógica de negocio
+ Uso consistente de templates o componentes
+6. Componentización
+ Componentes reutilizables y desacoplados
+ Interfaces claras (props, parámetros, contratos)
+ Responsabilidad única por componente
+ Composición jerárquica coherente
+ Evita duplicación de lógica o estructura
+7. Gestión de Eventos
+ Estrategia definida de manejo de eventos (delegación, binding centralizado, etc.)
+ Evita múltiples listeners innecesarios
+ Desacoplamiento entre eventos de UI y lógica de negocio
+ Uso de patrones como event bus o dispatcher cuando aplica
+ Manejo consistente de eventos asincrónicos
+8. Asincronía y Comunicación Externa
+ Manejo correcto de promesas / async-await
+ Gestión de estados de carga y error en requests
+ Cancelación o control de requests redundantes
+ Abstracción de capa de API (no llamadas dispersas)
+ Manejo de timeouts y fallos de red
+9. Performance
+ Tiempo de carga inicial optimizado
+ Lazy loading o carga diferida de módulos/vistas
+ Uso eficiente de memoria
+ Control de reflows y repaints
+ Uso de técnicas como debounce/throttle donde aplica
+ Animaciones optimizadas (requestAnimationFrame o equivalente)
+10. Experiencia de Usuario (UX)
+ Navegación fluida sin recargas completas
+ Feedback inmediato ante acciones del usuario
+ Estados visuales claros (loading, error, éxito)
+ Consistencia en interacción
+ Accesibilidad básica considerada (teclado, roles, etc.)
+11. Seguridad (Frontend Scope)
+ Sanitización de inputs
+ Protección contra XSS
+ Manejo seguro de tokens o credenciales
+ No exposición de datos sensibles en cliente
+ Validación doble (cliente + servidor cuando aplica)
+12. Estilos y Sistema Visual
+ Arquitectura CSS definida (BEM, utility-first, etc.)
+ Consistencia visual en toda la aplicación
+ Uso de variables (CSS custom properties o equivalente)
+ Responsive design implementado
+ Separación entre estilos y lógica
+13. Estructura del Proyecto y Mantenibilidad
+ Organización modular del código
+ Separación por dominio o feature
+ Nombres descriptivos y consistentes
+ Ausencia de archivos monolíticos
+ Facilidad para onboarding de nuevos desarrolladores
+14. Testing y Calidad (si aplica)
+ Existencia de pruebas unitarias o funcionales
+ Cobertura en lógica crítica
+ Validación de flujos principales
+ Automatización parcial o total del testing
+15. Independencia Tecnológica
+ Dependencias justificadas y controladas
+ Posibilidad de reemplazo de librerías sin impacto crítico
+ Comprensión del funcionamiento interno (no uso “caja negra”)

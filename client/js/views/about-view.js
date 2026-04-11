@@ -119,6 +119,7 @@ export class AboutView {
         <ol class="wiki-toc-list">
           <li><a href="javascript:void(0)" data-scroll="wiki-formacion">Formación académica</a></li>
           <li><a href="javascript:void(0)" data-scroll="wiki-carrera">Carrera política</a></li>
+          <li><a href="javascript:void(0)" data-scroll="wiki-hitos">Principales hitos de gestión</a></li>
           <li><a href="javascript:void(0)" data-scroll="wiki-familia">Familia y ascendencia</a></li>
           <li><a href="javascript:void(0)" data-scroll="wiki-genealogy-mount">Árbol genealógico</a></li>
           <li><a href="javascript:void(0)" data-scroll="wiki-emprendimientos">Iniciativas profesionales</a></li>
@@ -148,6 +149,56 @@ export class AboutView {
 
         <h3 class="wiki-subsec-title">Posicionamiento ideológico</h3>
         <p>Se autoidentifica como <strong>paleolibertario</strong> y <strong>minarquista</strong>, defendiendo la reducción del Estado a sus funciones mínimas, el respeto irrestricto a la propiedad privada, la soberanía individual y la descentralización del poder. Desde el punto de vista económico adhiere a la <strong>Escuela Austriaca</strong>, y en lo social asume posiciones conservadoras, siendo declaradamente <strong>provida</strong> y crítico del globalismo de izquierda.</p>
+      </section>
+
+      <!-- Hitos -->
+      <section class="wiki-sec" id="wiki-hitos">
+        <h2 class="wiki-sec-title">Principales hitos de gestión</h2>
+        <p>Durante su gestión como concejal, Filipovich impulsó y acompañó líneas de trabajo orientadas al fortalecimiento de la gestión local, la mejora de la respuesta a demandas vecinales y el seguimiento activo de políticas públicas, con intervención constante en procesos de planificación, ejecución y coordinación institucional.</p>
+<ol class="wiki-list" style="list-style: decimal; padding-left: var(--sp-10);">
+  <li><strong>Inició su gestión como concejal</strong> integrándose activamente al gobierno municipal, participando en la toma de decisiones y en el seguimiento de políticas en un contexto de transición institucional, contribuyendo a la continuidad operativa tras una década de gestión anterior.</li>
+
+  <li><strong>Contribuyó al fortalecimiento del Municipio como espacio de cercanía</strong> facilitando trámites, promoviendo la descentralización de servicios y canalizando demandas vecinales.</li>
+
+  <li><strong>Intervino en la atención de problemáticas sociales y territoriales</strong> incluyendo situaciones de vulnerabilidad, déficit hídrico y la problemática de personas en situación de calle.</li>
+
+  <li><strong>Participó en instancias de la Comisión de Desarrollo Humano</strong> promoviendo la continuidad de líneas de acción y la necesidad de un refugio local.</li>
+
+  <li><strong>Integró el seguimiento y priorización de obras públicas</strong> en función de criterios técnicos y disponibilidad de recursos.</li>
+
+  <li><strong>Acompañó la ejecución de intervenciones viales</strong> incluyendo la renovación de calles como Susana Ramírez y José Martí, obras en Juan Tolentino González, Camino Lloveras y tareas de bacheo en Cristóbal Cendán.</li>
+
+  <li><strong>Participó en el proceso de recategorización del Camino Lloveras</strong> una obra estratégica de 11 km que mejoró la conectividad y respondió a una demanda histórica de la comunidad.</li>
+
+  <li><strong>Integró el seguimiento de la obra en calle Susana Ramírez</strong> incluyendo cordón cuneta, estabilizado con tosca cementada y carpeta asfáltica, así como propuestas de ordenamiento vial y estacionamiento en su entorno.</li>
+
+  <li><strong>Participó en la planificación y ejecución de la primera etapa de remodelación del Prado–Parque Cultural (Parque Artigas)</strong> con mejoras en infraestructura y drenaje.</li>
+
+  <li><strong>Intervino en espacios de participación ciudadana como cabildos abiertos y audiencias públicas</strong> canalizando demandas vinculadas a infraestructura, tránsito y servicios.</li>
+
+  <li><strong>Mantuvo un vínculo activo con comisiones barriales e instituciones sociales, culturales y educativas</strong> fortaleciendo su integración en la agenda municipal.</li>
+
+  <li><strong>Participó en la conmemoración del 97° aniversario del Hospital de Canelones</strong> integrando instancias de gestión y planificación de actividades como la correcaminata solidaria.</li>
+
+  <li><strong>Contribuyó a la promoción de la identidad e historia local</strong> mediante iniciativas culturales y comunitarias.</li>
+
+  <li><strong>Participó en la implementación local de programas de empleo como Uruguay Impulsa</strong> facilitando el acceso a oportunidades laborales y formativas, y señalando sus limitaciones estructurales.</li>
+
+  <li><strong>Abordó la problemática del empleo local</strong> participando en el análisis de la falta de inversión y en la discusión de estrategias para la generación de trabajo.</li>
+
+  <li><strong>Participó en iniciativas de la agenda social local</strong> incluyendo la promoción de un refugio para personas en situación de calle y gestiones para facilitar habilitaciones a nivel comunitario, como las vinculadas a Bomberos.</li>
+
+  <li><strong>Se involucró en la articulación con jóvenes y militancia territorial</strong> promoviendo la participación y canalizando demandas vinculadas a descentralización y acceso a servicios.</li>
+
+  <li><strong>Colaboró en el abordaje de problemáticas territoriales específicas</strong> como accesibilidad en zonas rurales, condiciones de espacios públicos y necesidades de infraestructura básica.</li>
+
+  <li><strong>Participó en la dinámica institucional del Concejo</strong> contribuyendo al diálogo político, la construcción de acuerdos y la gestión de diferencias.</li>
+
+  <li><strong>Acompañó el desarrollo de programas y servicios comunitarios</strong> promoviendo mejoras en función de necesidades detectadas.</li>
+
+  <li><strong>Sentó bases para una proyección política sustentada en el conocimiento del territorio</strong> la gestión y la participación colectiva.</li>
+</ol>
+        </ul>
       </section>
 
       <!-- Familia -->
@@ -216,11 +267,13 @@ export class AboutView {
   }
 
   _initGenealogy() {
-    const mount = this.content.querySelector('#wiki-genealogy-mount');
+    const mount = this.content.querySelector("#wiki-genealogy-mount");
     if (!mount) return;
-    import('../genealogy-tree.js').then(({ GenealogyTree }) => {
-      this._genealogyTree = new GenealogyTree(mount);
-    }).catch(err => console.warn('GenealogyTree: no se pudo cargar', err));
+    import("../genealogy-tree.js")
+      .then(({ GenealogyTree }) => {
+        this._genealogyTree = new GenealogyTree(mount);
+      })
+      .catch((err) => console.warn("GenealogyTree: no se pudo cargar", err));
   }
 
   _initSlider() {
